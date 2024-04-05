@@ -730,31 +730,20 @@ impl Value {
             Schema::Bytes => (),
             _ => return Err(Error::ResolveDecimalSchema(inner.into())),
         };
-        match self {
-            Value::Decimal(num) => {
-                let num_bytes = num.len();
-                if max_prec_for_len(num_bytes)? < precision {
-                    Err(Error::ComparePrecisionAndSize {
-                        precision,
-                        num_bytes,
-                    })
-                } else {
-                    Ok(Value::Decimal(num))
-                }
-                // check num.bits() here
-            }
-            Value::Fixed(_, bytes) | Value::Bytes(bytes) => {
-                if max_prec_for_len(bytes.len())? < precision {
-                    Err(Error::ComparePrecisionAndSize {
-                        precision,
-                        num_bytes: bytes.len(),
-                    })
-                } else {
-                    // precision and scale match, can we assume the underlying type can hold the data?
-                    Ok(Value::Decimal(Decimal::from(bytes)))
-                }
-            }
-            other => Err(Error::ResolveDecimal(other.into())),
+        let num = match self {
+            Value::Decimal(num) => num,
+            Value::Fixed(_, bytes) | Value::Bytes(bytes) => Decimal::from(bytes),
+            other => return Err(Error::ResolveDecimal(other.into())),
+        };
+        let actual_precision = num.precision();
+
+        if actual_precision > precision {
+            Err(Error::ComparePrecisionAndSize {
+                precision,
+                actual: actual_precision,
+            })
+        } else {
+            Ok(Value::Decimal(num))
         }
     }
 
@@ -1617,27 +1606,31 @@ Field with name '"b"' is not a member of the map items"#,
 
     #[test]
     fn resolve_decimal_bytes() -> TestResult {
-        let value = Value::Decimal(Decimal::from(vec![1, 2, 3, 4, 5]));
-        value.clone().resolve(&Schema::Decimal(DecimalSchema {
-            precision: 10,
-            scale: 4,
-            inner: Box::new(Schema::Bytes),
-        }))?;
-        assert!(value.resolve(&Schema::String).is_err());
+        for input in [vec![1, 2], vec![1, 2, 3, 4, 5]] {
+            let value = Value::Decimal(Decimal::from(input));
+            value.clone().resolve(&Schema::Decimal(DecimalSchema {
+                precision: 10,
+                scale: 4,
+                inner: Box::new(Schema::Bytes),
+            }))?;
+            assert!(value.resolve(&Schema::String).is_err());
+        }
 
         Ok(())
     }
 
     #[test]
     fn resolve_decimal_invalid_scale() {
-        let value = Value::Decimal(Decimal::from(vec![1, 2]));
-        assert!(value
-            .resolve(&Schema::Decimal(DecimalSchema {
-                precision: 2,
-                scale: 3,
-                inner: Box::new(Schema::Bytes),
-            }))
-            .is_err());
+        for input in [vec![1], vec![1, 2]] {
+            let value = Value::Decimal(Decimal::from(input));
+            assert!(value
+                .resolve(&Schema::Decimal(DecimalSchema {
+                    precision: 2,
+                    scale: 3,
+                    inner: Box::new(Schema::Bytes),
+                }))
+                .is_err());
+        }
     }
 
     #[test]
@@ -1649,27 +1642,29 @@ Field with name '"b"' is not a member of the map items"#,
                 scale: 0,
                 inner: Box::new(Schema::Bytes),
             }))
-            .is_ok());
+            .is_err());
     }
 
     #[test]
     fn resolve_decimal_fixed() {
-        let value = Value::Decimal(Decimal::from(vec![1, 2, 3, 4, 5]));
-        assert!(value
-            .clone()
-            .resolve(&Schema::Decimal(DecimalSchema {
-                precision: 10,
-                scale: 1,
-                inner: Box::new(Schema::Fixed(FixedSchema {
-                    name: Name::new("decimal").unwrap(),
-                    aliases: None,
-                    size: 20,
-                    doc: None,
-                    attributes: Default::default(),
+        for input in [vec![1, 2], vec![1, 2, 3, 4, 5]] {
+            let value = Value::Decimal(Decimal::from(input));
+            assert!(value
+                .clone()
+                .resolve(&Schema::Decimal(DecimalSchema {
+                    precision: 10,
+                    scale: 1,
+                    inner: Box::new(Schema::Fixed(FixedSchema {
+                        name: Name::new("decimal").unwrap(),
+                        aliases: None,
+                        size: 20,
+                        doc: None,
+                        attributes: Default::default(),
+                    }))
                 }))
-            }))
-            .is_ok());
-        assert!(value.resolve(&Schema::String).is_err());
+                .is_ok());
+            assert!(value.resolve(&Schema::String).is_err());
+        }
     }
 
     #[test]

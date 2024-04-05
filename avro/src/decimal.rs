@@ -33,6 +33,10 @@ impl PartialEq for Decimal {
 }
 
 impl Decimal {
+    pub fn precision(&self) -> usize {
+        self.value.to_radix_le(10).1.len()
+    }
+
     pub(crate) fn len(&self) -> usize {
         self.len
     }

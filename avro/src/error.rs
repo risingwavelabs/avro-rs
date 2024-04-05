@@ -130,8 +130,8 @@ pub enum Error {
     #[error("Unable to convert to u8, got {0:?}")]
     GetU8(ValueKind),
 
-    #[error("Precision {precision} too small to hold decimal values with {num_bytes} bytes")]
-    ComparePrecisionAndSize { precision: usize, num_bytes: usize },
+    #[error("Precision {precision} too small to hold decimal values with precision {actual}")]
+    ComparePrecisionAndSize { precision: usize, actual: usize },
 
     #[error("Cannot convert length to i32: {1}")]
     ConvertLengthToI32(#[source] std::num::TryFromIntError, usize),
