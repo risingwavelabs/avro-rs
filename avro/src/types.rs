@@ -697,7 +697,11 @@ impl Value {
     }
 
     fn resolve_duration(self) -> Result<Self, Error> {
-        Ok(match self {
+        let physical = match self {
+            Value::Duration(_) => self,
+            _ => self.resolve_fixed(12)?,
+        };
+        Ok(match physical {
             duration @ Value::Duration { .. } => duration,
             Value::Fixed(size, bytes) => {
                 if size != 12 {
@@ -721,16 +725,23 @@ impl Value {
         if scale > precision {
             return Err(Error::GetScaleAndPrecision { scale, precision });
         }
-        match inner {
+        let physical = match inner {
             &Schema::Fixed(FixedSchema { size, .. }) => {
                 if max_prec_for_len(size)? < precision {
                     return Err(Error::GetScaleWithFixedSize { size, precision });
                 }
+                match self {
+                    Value::Decimal(_) => self,
+                    _ => self.resolve_fixed(size)?,
+                }
             }
-            Schema::Bytes => (),
+            Schema::Bytes => match self {
+                Value::Decimal(_) => self,
+                _ => self.resolve_bytes()?,
+            },
             _ => return Err(Error::ResolveDecimalSchema(inner.into())),
         };
-        let num = match self {
+        let num = match physical {
             Value::Decimal(num) => num,
             Value::Fixed(_, bytes) | Value::Bytes(bytes) => Decimal::from(bytes),
             other => return Err(Error::ResolveDecimal(other.into())),
@@ -748,14 +759,22 @@ impl Value {
     }
 
     fn resolve_date(self) -> Result<Self, Error> {
-        match self {
+        let physical = match self {
+            Value::Date(_) => self,
+            _ => self.resolve_int()?,
+        };
+        match physical {
             Value::Date(d) | Value::Int(d) => Ok(Value::Date(d)),
             other => Err(Error::GetDate(other.into())),
         }
     }
 
     fn resolve_time_millis(self) -> Result<Self, Error> {
-        match self {
+        let physical = match self {
+            Value::TimeMillis(_) => self,
+            _ => self.resolve_int()?,
+        };
+        match physical {
             Value::TimeMillis(t) | Value::Int(t) => Ok(Value::TimeMillis(t)),
             other => Err(Error::GetTimeMillis(other.into())),
         }

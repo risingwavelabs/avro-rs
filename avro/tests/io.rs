@@ -70,6 +70,57 @@ lazy_static! {
         (r#"["int", "null"]"#, "5", Value::Union(0, Box::new(Value::Int(5)))),
         (r#"{"type": "record", "name": "F", "fields": [{"name": "A", "type": "int"}]}"#, r#"{"A": 5}"#,Value::Record(vec![("A".to_string(), Value::Int(5))])),
         (r#"["null", "int"]"#, "null", Value::Union(0, Box::new(Value::Null))),
+        (
+            r#" {"type":"bytes","logicalType":"decimal","precision":10,"scale":2} "#,
+            r#" "\u00ff" "#,
+            Value::Decimal([0xff].into()),
+        ),
+        (
+            r#" {"type":"fixed","name":"decimal9999","size":2,"logicalType":"decimal","precision":4} "#,
+            r#" "\u00ff\u00ff" "#,
+            Value::Decimal([0xff, 0xff].into()),
+        ),
+        (
+            r#" {"type":"string","logicalType":"uuid"} "#,
+            r#" "018ef4f1-93d4-7ef3-8c81-6c857ed99325" "#,
+            Value::Uuid("018ef4f1-93d4-7ef3-8c81-6c857ed99325".parse().unwrap()),
+        ),
+        (r#" {"type":"int","logicalType":"date"} "#, r#" 13150 "#, Value::Date(13150)),
+        (
+            r#" {"type":"int","logicalType":"time-millis"} "#,
+            r#" 54245000 "#,
+            Value::TimeMillis(54245000),
+        ),
+        (
+            r#" {"type":"long","logicalType":"time-micros"} "#,
+            r#" 54245000000 "#,
+            Value::TimeMicros(54245000000),
+        ),
+        (
+            r#" {"type":"long","logicalType":"timestamp-millis"} "#,
+            r#" 1136239445000 "#,
+            Value::TimestampMillis(1136239445000),
+        ),
+        (
+            r#" {"type":"long","logicalType":"timestamp-micros"} "#,
+            r#" 1136239445000000 "#,
+            Value::TimestampMicros(1136239445000000),
+        ),
+        (
+            r#" {"type":"long","logicalType":"local-timestamp-millis"} "#,
+            r#" 1136214245000 "#,
+            Value::LocalTimestampMillis(1136214245000),
+        ),
+        (
+            r#" {"type":"long","logicalType":"local-timestamp-micros"} "#,
+            r#" 1136214245000000 "#,
+            Value::LocalTimestampMicros(1136214245000000),
+        ),
+        (
+            r#" {"type":"fixed","name":"duration","size":12,"logicalType":"duration"} "#,
+            r#" "\u000f\u0000\u0000\u0000\u00ff\u0000\u0000\u0000\u0088\u0012\u0062\u0008" "#,
+            Value::Duration(apache_avro::Duration::new(apache_avro::Months::new(15), apache_avro::Days::new(255), apache_avro::Millis::new(140645000))),
+        ),
     ];
 
     static ref LONG_RECORD_SCHEMA: Schema = Schema::parse_str(r#"
