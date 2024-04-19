@@ -57,13 +57,13 @@ lazy_static! {
         (r#""boolean""#, "true", Value::Boolean(true)),
         (r#""string""#, r#""foo""#, Value::String("foo".to_string())),
         (r#""bytes""#, r#""a""#, Value::Bytes(vec![97])), // ASCII 'a' => one byte
-        (r#""bytes""#, r#""\u00FF""#, Value::Bytes(vec![195, 191])), // The value is between U+0080 and U+07FF => two bytes
+        (r#""bytes""#, r#""\u00FF""#, Value::Bytes(vec![255])), // The value is between U+0080 and U+07FF => ISO-8859-1
         (r#""int""#, "5", Value::Int(5)),
         (r#""long""#, "5", Value::Long(5)),
         (r#""float""#, "1.1", Value::Float(1.1)),
         (r#""double""#, "1.1", Value::Double(1.1)),
         (r#"{"type": "fixed", "name": "F", "size": 2}"#, r#""a""#, Value::Fixed(1, vec![97])), // ASCII 'a' => one byte
-        (r#"{"type": "fixed", "name": "F", "size": 2}"#, r#""\u00FF""#, Value::Fixed(2, vec![195, 191])), // The value is between U+0080 and U+07FF => two bytes
+        (r#"{"type": "fixed", "name": "F", "size": 2}"#, r#""\u00FF""#, Value::Fixed(1, vec![255])), // The value is between U+0080 and U+07FF => ISO-8859-1
         (r#"{"type": "enum", "name": "F", "symbols": ["FOO", "BAR"]}"#, r#""FOO""#, Value::Enum(0, "FOO".to_string())),
         (r#"{"type": "array", "items": "int"}"#, "[1, 2, 3]", Value::Array(vec![Value::Int(1), Value::Int(2), Value::Int(3)])),
         (r#"{"type": "map", "values": "int"}"#, r#"{"a": 1, "b": 2}"#, Value::Map([("a".to_string(), Value::Int(1)), ("b".to_string(), Value::Int(2))].iter().cloned().collect())),
