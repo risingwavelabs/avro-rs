@@ -102,7 +102,7 @@ fn default_value_examples() -> &'static Vec<(&'static str, &'static str, Value)>
             (r#""boolean""#, "true", Value::Boolean(true)),
             (r#""string""#, r#""foo""#, Value::String("foo".to_string())),
             (r#""bytes""#, r#""a""#, Value::Bytes(vec![97])), // ASCII 'a' => one byte
-            (r#""bytes""#, r#""\u00FF""#, Value::Bytes(vec![195, 191])), // The value is between U+0080 and U+07FF => two bytes
+            (r#""bytes""#, r#""\u00FF""#, Value::Bytes(vec![255])), // The value is between U+0080 and U+07FF => ISO-8859-1
             (r#""int""#, "5", Value::Int(5)),
             (r#""long""#, "5", Value::Long(5)),
             (r#""float""#, "1.1", Value::Float(1.1)),
@@ -131,8 +131,8 @@ fn default_value_examples() -> &'static Vec<(&'static str, &'static str, Value)>
             (
                 r#"{"type": "fixed", "name": "F", "size": 2}"#,
                 r#""\u00FF""#,
-                Value::Fixed(2, vec![195, 191]),
-            ), // The value is between U+0080 and U+07FF => two bytes
+                Value::Fixed(1, vec![255]),
+            ), // The value is between U+0080 and U+07FF => ISO-8859-1
             (
                 r#"{"type": "enum", "name": "F", "symbols": ["FOO", "BAR"]}"#,
                 r#""FOO""#,

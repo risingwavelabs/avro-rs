@@ -922,10 +922,17 @@ impl Value {
         }
     }
 
+    /// <https://github.com/apache/avro/blob/release-1.11.3/lang/java/avro/src/main/java/org/apache/avro/io/parsing/ResolvingGrammarGenerator.java#L315>
+    fn encode_iso_8859_1(s: &str) -> Result<Vec<u8>, Error> {
+        s.chars()
+            .map(|c| Ok(c.try_into().map_err(Details::EncodeISO88591BytesError)?))
+            .collect()
+    }
+
     fn resolve_bytes(self) -> Result<Self, Error> {
         match self {
             Value::Bytes(bytes) => Ok(Value::Bytes(bytes)),
-            Value::String(s) => Ok(Value::Bytes(s.into_bytes())),
+            Value::String(s) => Ok(Value::Bytes(Self::encode_iso_8859_1(&s)?)),
             Value::Array(items) => Ok(Value::Bytes(
                 items
                     .into_iter()
@@ -939,9 +946,10 @@ impl Value {
     fn resolve_string(self) -> Result<Self, Error> {
         match self {
             Value::String(s) => Ok(Value::String(s)),
-            Value::Bytes(bytes) | Value::Fixed(_, bytes) => Ok(Value::String(
-                String::from_utf8(bytes).map_err(Details::ConvertToUtf8)?,
-            )),
+            // Be conservative for now. It is NOT UTF8.
+            // Value::Bytes(bytes) | Value::Fixed(_, bytes) => Ok(Value::String(
+            //     String::from_utf8(bytes).map_err(Details::ConvertToUtf8)?,
+            // )),
             other => Err(Details::GetString(other).into()),
         }
     }
@@ -955,7 +963,10 @@ impl Value {
                     Err(Details::CompareFixedSizes { size, n }.into())
                 }
             }
-            Value::String(s) => Ok(Value::Fixed(s.len(), s.into_bytes())),
+            Value::String(s) => {
+                let bytes = Self::encode_iso_8859_1(&s)?;
+                Ok(Value::Fixed(bytes.len(), bytes))
+            }
             Value::Bytes(s) => {
                 if s.len() == size {
                     Ok(Value::Fixed(size, s))
@@ -1670,27 +1681,27 @@ Field with name '"b"' is not a member of the map items"#,
         Ok(())
     }
 
-    #[test]
-    fn resolve_string_from_bytes() -> TestResult {
-        let value = Value::Bytes(vec![97, 98, 99]);
-        assert_eq!(
-            value.resolve(&Schema::String)?,
-            Value::String("abc".to_string())
-        );
+    // #[test]
+    // fn resolve_string_from_bytes() -> TestResult {
+    //     let value = Value::Bytes(vec![97, 98, 99]);
+    //     assert_eq!(
+    //         value.resolve(&Schema::String)?,
+    //         Value::String("abc".to_string())
+    //     );
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
-    #[test]
-    fn resolve_string_from_fixed() -> TestResult {
-        let value = Value::Fixed(3, vec![97, 98, 99]);
-        assert_eq!(
-            value.resolve(&Schema::String)?,
-            Value::String("abc".to_string())
-        );
+    // #[test]
+    // fn resolve_string_from_fixed() -> TestResult {
+    //     let value = Value::Fixed(3, vec![97, 98, 99]);
+    //     assert_eq!(
+    //         value.resolve(&Schema::String)?,
+    //         Value::String("abc".to_string())
+    //     );
 
-        Ok(())
-    }
+    //     Ok(())
+    // }
 
     #[test]
     fn resolve_bytes_failure() {

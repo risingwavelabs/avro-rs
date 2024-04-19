@@ -97,6 +97,9 @@ pub enum Details {
     #[error("Invalid utf-8 string")]
     ConvertToUtf8Error(#[source] std::str::Utf8Error),
 
+    #[error("Invalid bytes")]
+    EncodeISO88591BytesError(#[source] std::char::TryFromCharError),
+
     /// Describes errors happened while validating Avro data.
     #[error("Value does not match schema")]
     Validation,
