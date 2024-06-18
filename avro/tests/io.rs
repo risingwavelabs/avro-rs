@@ -62,6 +62,9 @@ lazy_static! {
         (r#""long""#, "5", Value::Long(5)),
         (r#""float""#, "1.1", Value::Float(1.1)),
         (r#""double""#, "1.1", Value::Double(1.1)),
+        (r#""float""#, r#""  +inf ""#, Value::Float(f32::INFINITY)),
+        (r#""double""#, r#""-Infinity""#, Value::Double(f64::NEG_INFINITY)),
+        (r#""double""#, r#""-NAN""#, Value::Double(f64::NAN)),
         (r#"{"type": "fixed", "name": "F", "size": 2}"#, r#""a""#, Value::Fixed(1, vec![97])), // ASCII 'a' => one byte
         (r#"{"type": "fixed", "name": "F", "size": 2}"#, r#""\u00FF""#, Value::Fixed(1, vec![255])), // The value is between U+0080 and U+07FF => ISO-8859-1
         (r#"{"type": "enum", "name": "F", "symbols": ["FOO", "BAR"]}"#, r#""FOO""#, Value::Enum(0, "FOO".to_string())),
@@ -264,11 +267,27 @@ fn test_default_value() -> TestResult {
             &mut Cursor::new(encoded),
             Some(&reader_schema),
         )?;
-        assert_eq!(
-            datum_read, datum_to_read,
-            "{} -> {}",
-            *field_type, *default_json
-        );
+        match default_datum {
+            Value::Double(f) if f.is_nan() => {
+                let Value::Record(fields) = datum_read else {
+                    unreachable!("the test always constructs top level as record")
+                };
+                let Value::Double(f) = fields[0].1 else {
+                    panic!("double expected")
+                };
+                assert!(
+                    f.is_nan(),
+                    "{field_type} -> {default_json} is parsed as {f} rather than NaN"
+                );
+            }
+            _ => {
+                assert_eq!(
+                    datum_read, datum_to_read,
+                    "{} -> {}",
+                    *field_type, *default_json
+                );
+            }
+        }
     }
 
     Ok(())
